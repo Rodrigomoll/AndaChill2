@@ -1,12 +1,14 @@
-import 'dart:ffi';
-import 'package:anda_chill/screens/login_screen.dart';
-import 'package:anda_chill/services/services.dart';
-import 'package:anda_chill/ui/input_decorations.dart';
 import 'package:flutter/material.dart';
-import 'package:anda_chill/providers/product_form_provider.dart';
-import 'package:anda_chill/widgets/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:provider/provider.dart';
+import 'package:anda_chill/providers/product_form_provider.dart';
+
+import 'package:anda_chill/services/services.dart';
+
+import 'package:anda_chill/ui/input_decorations.dart';
+import 'package:anda_chill/widgets/widgets.dart';
 
 class ProductScreen extends StatelessWidget {
   @override
@@ -51,7 +53,18 @@ class _ProductScreenBody extends StatelessWidget {
                       top: 60,
                       right: 20,
                       child: IconButton(
-                        onPressed: () {},
+                        onPressed: () async {
+                          final picker = new ImagePicker();
+                          final PickedFile? pickedFile = await picker.getImage(
+                              source: ImageSource.camera, imageQuality: 100);
+                          if (pickedFile == null) {
+                            print('No seleccionó nada');
+                            return;
+                          }
+
+                          productService
+                              .updateSelectedProductImage(pickedFile.path);
+                        },
                         icon: Icon(Icons.camera_alt_outlined,
                             size: 40, color: Colors.white),
                       )),
@@ -63,12 +76,20 @@ class _ProductScreenBody extends StatelessWidget {
           )),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.save_outlined),
-        onPressed: () async {
-          if (!productForm.isValidForm()) return;
+        child: productService.isSaving
+            ? CircularProgressIndicator(color: Colors.white)
+            : Icon(Icons.save_outlined),
+        onPressed: productService.isSaving
+            ? null
+            : () async {
+                if (!productForm.isValidForm()) return;
 
-          await productService.saveOrCreteProduct(productForm.product);
-        },
+                final String? imageUrl = await productService.uploadImage();
+
+                if (imageUrl != null) productForm.product.picture = imageUrl;
+
+                await productService.saveOrCreteProduct(productForm.product);
+              },
       ),
     );
   }
